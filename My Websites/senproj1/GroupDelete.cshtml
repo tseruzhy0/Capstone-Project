@@ -1,0 +1,104 @@
+﻿@section Scripts {
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+}
+
+@{
+    WebSecurity.RequireRoles("Administrator");
+    
+    Layout = "~/_SiteLayout.cshtml";
+    Page.Title = "Group Delete";
+
+    
+    
+    var db = Database.Open("StarterSite");
+    
+    var email = "";
+    var groupListData = "";
+    var groupList = "";
+    var groupQueryString = "";
+    var selectedGroup = "";
+    var groupDisplayQueryString = "SELECT GroupTitle, StartDateTime, EndDateTime, GroupDescription, Size FROM Groups ORDER BY GroupTitle";
+    
+    groupQueryString = "SELECT GroupTitle FROM Groups ORDER BY GroupTitle";
+
+    
+
+    
+
+    Validation.RequireField("groupList", "You must select a group to sign up for");
+
+    if (IsPost)
+    {
+        AntiForgery.Validate();
+        selectedGroup = Request["groupList"];
+        
+
+        if (Validation.IsValid())
+        {
+          
+            
+            var user = db.QuerySingle("SELECT GroupTitle FROM Groups WHERE LOWER(GroupTitle) = LOWER(@0)", selectedGroup);
+            if (user != null) {
+                db.Execute("DELETE FROM Groups WHERE LOWER(GroupTitle) = LOWER(@0)", selectedGroup);
+                db.Execute("DELETE FROM GroupSignup WHERE LOWER(GroupTitle) = LOWER(@0)", selectedGroup);
+
+            } else {
+                ModelState.AddFormError("Group was already Deleted");
+            }
+            
+        }
+    }
+    
+    
+}
+
+<div class="container">
+     <div class="page-header">
+          <h1>@Page.Title</h1>
+          <p>Group and Camp Removal</p>
+     </div>
+
+     <form method="post">
+          @AntiForgery.GetHtml()
+          @* If at least one validation error exists, notify the user *@
+          @Html.ValidationSummary("Please Select a group for deletion", excludeFieldErrors: true, htmlAttributes: null)
+
+          <h4>Select Group to Delete</h4>
+          <div class="group">
+               Select Group or Camp:
+               <select name="groupList" onselect="reselectState(this.value)">
+                    @foreach (var row in db.Query(groupQueryString))
+                    {
+                         <option selected="@(Request["groupList"]=="@row.GroupTitle")" value="@row.GroupTitle">@row.GroupTitle</option>
+                    }
+               </select>
+               @Html.ValidationMessage("groupList")
+          </div>
+          <button class="btn btn-default" type="submit">Delete</button>
+     </form>
+
+     <table class="table">
+          <thead>
+               <tr>
+                    <th>Group</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Description</th>
+                    <th>Size</th>
+               </tr>
+          </thead>
+          <tbody> 
+               @foreach (var row in db.Query(groupDisplayQueryString))
+               {
+                    <tr>
+                         <td>@row.GroupTitle</td>
+                         <td>@row.StartDateTime</td>
+                         <td>@row.EndDateTime</td>
+                         <td>@row.GroupDescription</td>
+                    </tr>
+               }
+          </tbody>
+     </table>
+</div>
+

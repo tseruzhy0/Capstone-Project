@@ -1,0 +1,123 @@
+﻿@section Scripts {
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+}
+
+@{
+    WebSecurity.RequireRoles("Administrator");
+    Layout = "~/_SiteLayout.cshtml";
+    Page.Title = "Create Group";
+    
+    var groupTitle = "";
+    var startDateTime = "";
+    var endDateTime = "";    
+    var size = "";
+    var groupDetails = "";
+    var monday = "";
+    var tuesday = "";
+    var wednesday = "";
+    var thursday = "";
+    var friday = "";
+    var saturday = "";
+    var sunday = "";
+    var days = new string[7];
+    var daySchedule = "";
+
+    Validation.RequireField("groupTitle", "You must enter in group Title");
+    Validation.RequireField("startDateTime", "You must enter a date when the group starts");
+    Validation.RequireField("endDateTime", "You must enter a date when this group concludes");
+    Validation.RequireField("size", "You must enter the size of the group");
+    Validation.RequireField("groupDetails", "You must submit the details of your group");
+
+
+    if (IsPost)
+    {
+        AntiForgery.Validate();
+        groupTitle = Request.Form["groupTitle"];
+        startDateTime = Request.Form["startDateTime"];
+        endDateTime = Request.Form["endDateTime"];
+        size = Request.Form["size"];
+        groupDetails = Request.Form["groupDetails"];
+        days[0] = Request.Form["Monday"];
+        days[1] = Request.Form["Tuesday"];
+        days[2] = Request.Form["Wednesday"];
+        days[3] = Request.Form["Thursday"];
+        days[4] = Request.Form["Friday"];
+        days[5] = Request.Form["Saturday"];
+        days[6] = Request.Form["Sunday"];
+
+
+        if (Validation.IsValid())
+        {
+            for (int i = 0; i<7; i++) {
+                if(!String.IsNullOrEmpty(days[i])){
+                    daySchedule = daySchedule + days[i].ToString() + " ";
+                }
+            }
+            var db = Database.Open("StarterSite");
+            
+            var user = db.QuerySingle("SELECT GroupTitle FROM Groups WHERE LOWER(GroupTitle) = LOWER(@0)", groupTitle);
+            if (user == null) {
+                db.Execute("INSERT INTO Groups (GroupTitle,StartDateTime,EndDateTime,GroupDescription,Size,CurrentSize,Days) VALUES (@0, @1, @2, @3, @4,@5,@6)", groupTitle,startDateTime,endDateTime,groupDetails,size,0,daySchedule);
+
+            } else {
+                ModelState.AddFormError("Group was already Added");
+            }
+            
+        }
+    }
+    
+}
+
+<div class="container">
+     <div class="page-header">
+          <h1>@Page.Title</h1>
+     </div>
+
+     <form method="post">
+          @AntiForgery.GetHtml()
+          @* If at least one validation error exists, notify the user *@
+          @Html.ValidationSummary("Group creation was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+
+          <h2>Submission Form</h2>
+          <div class="groupTitle">
+               <label for="groupTitle" @if (!ModelState.IsValidField("groupTitle")) { <text> class="error-label" </text>  }>Group Title</label>
+               <input style="width:30%" class="form-control" type="text" id="groupTitle" name="groupTitle" value="@groupTitle" @Validation.For("groupTitle") />
+               @Html.ValidationMessage("groupTitle")
+          </div>
+          <div class="startDateTime">
+               <label for="startDateTime" @if (!ModelState.IsValidField("startDateTime")) { <text> class="error-label" </text>   }>Starting Date and Time</label>
+               <input style="width:30%" class="form-control" type="datetime-local" id="startDateTime" name="startDateTime" value="@startDateTime" @Validation.For("startDateTime") />
+               @Html.ValidationMessage("startDateTime")
+          </div>
+          <div class="endDateTime">
+               <label for="endDateTime" @if (!ModelState.IsValidField("endDateTime")) { <text> class="error-label" </text>   }>End Date and Time</label>
+               <input style="width:30%" class="form-control" type="datetime-local" id="endDateTime" name="endDateTime" value="@endDateTime" @Validation.For("endDateTime") />
+               @Html.ValidationMessage("endDateTime")
+          </div>
+          <div class="days">
+               Select which days of the week your group or camp will meet on<br />
+               Monday <input type="checkbox" name="Monday" value="Monday" /><br />
+               Tuesday <input type="checkbox" name="Tuesday" value="Tuesday" /><br />
+               Wednesday <input type="checkbox" name="Wednesday" value="Wednesday" /><br />
+               Thursday <input type="checkbox" name="Thursday" value="Thursday" /><br />
+               Friday <input type="checkbox" name="Friday" value="Friday" /><br />
+               Saturday <input type="checkbox" name="Saturday" value="Saturday" /><br />
+               Sunday <input type="checkbox" name="Sunday" value="Sunday" /><br />
+          </div>
+          <div class="size">
+               <label for="size" @if (!ModelState.IsValidField("size")) { <text> class="error-label" </text>   }>Size of Group</label>
+               <input style="width:30%" class="form-control" type="number" id="size" name="size" value="@size" @Validation.For("size") />
+               @Html.ValidationMessage("size")
+          </div>
+          <div class="groupDetails">
+               <label for="groupDetails" @if (!ModelState.IsValidField("groupDetails")) { <text> class="error-label" </text>   }>Group Details</label><br/>
+               <textarea cols="150" rows="10" name="groupDetails" id="groupDetails" @Validation.For("groupDetails")></textarea>
+               
+               @Html.ValidationMessage("groupDetails")
+          </div>
+          <button class="btn btn-default" type="submit">Add Camp</button>
+     </form>
+</div>
+
+

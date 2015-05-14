@@ -1,0 +1,91 @@
+﻿@section Scripts {
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+}
+
+@{
+    WebSecurity.RequireAuthenticatedUser();
+    
+    Layout = "~/_SiteLayout.cshtml";
+    Page.Title = "Manage Groups";
+
+
+
+    var db = Database.Open("StarterSite");
+    var selectedGroup = "";
+    var groupQueryString = "SELECT GroupTitle,Email FROM GroupSignup WHERE Email = (@0)";
+
+    
+
+    
+
+    Validation.RequireField("groupList", "You must select a group to sign up for");
+
+    if (IsPost)
+    {
+        AntiForgery.Validate();
+        selectedGroup = Request["groupList"];
+        
+
+        if (Validation.IsValid())
+        {
+
+            var size = db.QuerySingle("SELECT CurrentSize, GroupTitle FROM Groups WHERE LOWER(GroupTitle) = LOWER(@0)",selectedGroup);
+
+            var user = db.QuerySingle("SELECT GroupTitle,Email FROM GroupSignup WHERE LOWER(GroupTitle) = LOWER(@0) AND LOWER(Email) = LOWER(@1)", selectedGroup, WebSecurity.CurrentUserName); 
+            if (user != null)
+            {
+                
+
+                db.Execute("DELETE FROM GroupSignup WHERE LOWER(GroupTitle) = LOWER(@0) AND LOWER(Email) = LOWER(@1)", selectedGroup,WebSecurity.CurrentUserName);
+                db.Execute("UPDATE Groups  SET CurrentSize= @0 WHERE GroupTitle= @1",size.CurrentSize-1, selectedGroup);
+
+                if(size.CurrentSize < 0) {
+                    db.Execute("UPDATE Groups  SET CurrentSize= @0 WHERE GroupTitle= @1",0, selectedGroup);
+                }
+            }
+            else
+            {
+                ModelState.AddFormError("Group was already Deleted");
+            }
+            
+        }
+    }
+    
+    
+}
+
+<div class="container">
+     <div class="page-header">
+          <h1>@Page.Title</h1>
+     </div>
+
+     <form method="post">
+          @AntiForgery.GetHtml()
+          @* If at least one validation error exists, notify the user *@
+          @Html.ValidationSummary("Please Select a group for deletion", excludeFieldErrors: true, htmlAttributes: null)
+
+          <h3>Select Group to Delete</h3>
+               <p>
+                    Select Group or Camp:
+                    <select name="groupList" onselect="reselectState(this.value)">
+                         @foreach (var row in db.Query(groupQueryString, WebSecurity.CurrentUserName))
+                         {
+                              <option selected="@(Request["groupList"]=="@row.GroupTitle")" value="@row.GroupTitle">@row.GroupTitle</option>
+                         }
+                    </select>
+                    @Html.ValidationMessage("groupList")
+               </p>
+          <input type="submit" value="Delete" />
+     </form>
+     <br />
+     <div class="list-group" style="width:30%;">
+          <div class="list-group-item active">Registered Groups</div>
+
+          @foreach (var row in db.Query(groupQueryString, WebSecurity.CurrentUserName))
+          {
+               <div class="list-group-item">@row.GroupTitle</div>
+          }
+     </div>
+</div>
+

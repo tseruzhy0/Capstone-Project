@@ -1,0 +1,126 @@
+﻿@section Scripts {
+    
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+  
+    
+}
+
+@{
+    WebSecurity.RequireRoles("Administrator");
+    
+    Layout = "~/_SiteLayout.cshtml";
+    Page.Title = "Admin Group User Removal";
+
+
+    bool isSelected = false;
+    var db = Database.Open("StarterSite");
+    var selectedGroup = "";
+    var selectedUser = "";
+    var groupQueryString = "SELECT GroupTitle FROM Groups";
+    var userQueryString = "SELECT GroupTitle,Email FROM GroupSignup ORDER BY Email";
+    var selectGroup = db.Query(groupQueryString);
+    
+    var groupList = selectGroup.Select(item => new SelectListItem{
+        Value = item.GroupTitle.ToString(),
+        Text = item.GroupTitle
+    });
+
+
+    if (IsPost)
+    {
+        AntiForgery.Validate();
+        selectedGroup = Request["groupId"];
+        selectedUser = Request["userId"];
+
+        if (Validation.IsValid())
+        {
+
+            var size = db.QuerySingle("SELECT CurrentSize, GroupTitle FROM Groups WHERE LOWER(GroupTitle) = LOWER(@0)",selectedGroup);
+
+            var user = db.QuerySingle("SELECT GroupTitle,Email FROM GroupSignup WHERE LOWER(GroupTitle) = LOWER(@0) AND LOWER(Email) = LOWER(@1)", selectedGroup, selectedUser); 
+            if (user != null)
+            {
+                
+
+                db.Execute("DELETE FROM GroupSignup WHERE LOWER(GroupTitle) = LOWER(@0) AND LOWER(Email) = LOWER(@1)", selectedGroup,selectedUser);
+                db.Execute("UPDATE Groups  SET CurrentSize= @0 WHERE GroupTitle= @1",size.CurrentSize-1, selectedGroup);
+
+                if(size.CurrentSize < 0) {
+                    db.Execute("UPDATE Groups  SET CurrentSize= @0 WHERE GroupTitle= @1",0, selectedGroup);
+                }
+
+                WebMail.Send(selectedUser,"You have been removed from:" + selectedGroup,"You have been removed from:" + selectedGroup, WebMail.From);
+            }
+            else
+            {
+                ModelState.AddFormError("Group was already Deleted");
+            }
+            
+        }
+
+        
+    }
+    
+    
+}
+
+<div class="container">
+     <div class="page-header">
+          <h1>@Page.Title</h1>
+          <p>Admin Group Management</p>
+     </div>
+
+     <form method="post">
+          @AntiForgery.GetHtml()
+          @* If at least one validation error exists, notify the user *@
+          @Html.ValidationSummary("Please Select a group and user to remove from the group", excludeFieldErrors: true, htmlAttributes: null)
+          <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.1.min.js" type="text/javascript"></script>
+          <script>
+               $(function () {
+                    var userSelect = $('#userId');
+                    userSelect.attr('disabled', true);
+                    $('#groupId').change(function () {
+                         var groupId = $(this).val();
+                         $.getJSON('/Cascade/' + groupId, function (products) {
+                              userSelect.attr('disabled', false);
+                              userSelect.empty();
+                              userSelect.append(
+                                      $('<option/>')
+                                          .attr('value', '')
+                                          .text('-- Select Product --'));
+                              $.each(products, function (index, product) {
+                                   userSelect.append(
+                                       $('<option/>')
+                                           .attr('value', product.Email)
+                                           .text(product.Email)
+                                   );
+                              });
+                         });
+                    });
+               });
+          </script>
+
+
+          <fieldset>
+               <legend>Select User to Remove</legend>
+                    <p class="group">
+                         Select Group or Camp:<br />
+                         @Html.DropDownList("groupId", "--- Select Group ---", groupList)
+                    </p>
+                    <p class="user">
+                         Select User: <br />
+                         @Html.DropDownList("userId", "-- Select Product --", Enumerable.Empty<SelectListItem>())
+                    </p>
+               <button class="btn btn-default" type="submit">Delete</button>
+          </fieldset>
+          <script type="text/javascript">
+               function doSomething() {
+
+
+               }
+          </script>
+     </form>
+</div>
+
+

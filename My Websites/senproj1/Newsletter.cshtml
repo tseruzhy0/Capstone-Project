@@ -1,0 +1,89 @@
+﻿@section Scripts {
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+}
+
+@{
+    WebSecurity.RequireRoles("Administrator");
+    
+    Layout = "~/_SiteLayout.cshtml";
+    Page.Title = "Newsletter";
+
+
+    var newsletterDetails = "";
+    var db = Database.Open("StarterSite");
+    var selectedGroup = "";
+    var groupQueryString = "SELECT GroupTitle,Email FROM GroupSignup WHERE GroupTitle = (@0)";
+    var groupSelectionQuery = "SELECT GroupTitle FROM Groups";
+    var registedUserQuery = "SELECT Email,Newsletter FROM UserProfile WHERE Newsletter = (@0)";
+    
+
+    
+
+    Validation.RequireField("groupList", "You must select a group");
+    Validation.RequireField("newsletterDetails", "Please provide a message for your newsletter");
+
+    if (IsPost)
+    {
+        AntiForgery.Validate();
+        selectedGroup = Request["groupList"];
+        newsletterDetails = Request["newsletterDetails"];
+        
+        
+        if (Validation.IsValid())
+        {
+            if(!(String.Equals(selectedGroup,"All"))) {
+                var userList = db.Query(groupQueryString,selectedGroup);
+                foreach(var row in userList) {
+                    WebMail.Send(row.Email,"Newsletter for:" + selectedGroup,newsletterDetails, WebMail.From);
+                 }    
+            } else {
+                var registerUsers = db.Query(registedUserQuery,true);
+                foreach(var row in registerUsers) {
+                    if((!String.Equals(row.Email,"admin"))){
+                        WebMail.Send(row.Email,"Newsletter for all Registered Users",newsletterDetails, WebMail.From);
+                    }
+                 
+                 } 
+            }
+            
+            
+            
+        }
+    }
+    
+    
+}
+
+<div class="container">
+     <div class="page-header">
+          <h1>@Page.Title</h1>
+     </div>
+
+     <form method="post">
+          @AntiForgery.GetHtml()
+          @* If at least one validation error exists, notify the user *@
+          @Html.ValidationSummary("Please Select a group for Newsletter", excludeFieldErrors: true, htmlAttributes: null)
+
+          <fieldset>
+               <legend>Select Group to send a newsletter to</legend>
+               <p class="group">
+                    Select Group or Camp:
+                    <select name="groupList" onselect="reselectState(this.value)">
+                         <option selected="@(Request["groupList"]=="All")" value="All">All</option>
+                         @foreach (var row in db.Query(groupSelectionQuery))
+                         {
+                              <option selected="@(Request["groupList"]=="@row.GroupTitle")" value="@row.GroupTitle">@row.GroupTitle</option>
+                         }
+                    </select>
+                    @Html.ValidationMessage("groupList")
+               </p>
+               <p class="newsletterDetails">
+                    <label for="newsletterDetails" @if (!ModelState.IsValidField("newsletterDetails")) { <text> class="error-label" </text>  }>Newsletter Message</label><br/>
+                    <textarea cols="150" rows="10" name="newsletterDetails" id="newsletterDetails" @Validation.For("newsletterDetails")></textarea>
+                    @Html.ValidationMessage("newsletterDetails")
+               </p>
+               <button class="btn btn-default" type="submit">Send</button>
+          </fieldset>
+     </form>
+</div>

@@ -1,0 +1,42 @@
+﻿@{
+    WebSecurity.InitializeDatabaseConnection("StarterSite", "UserProfile", "UserId", "Email", autoCreateTables: true);
+    /*
+        Both admin and webmail are functioning on the live website if you are interested in testing out the admin funcionality please
+        contact me and I can provide that information.
+    */
+
+    
+    if (!WebSecurity.UserExists("admin"))
+    {
+        //WebSecurity.CreateUserAndAccount("", "");
+        //Roles.CreateRole("Administrator");
+        //Roles.AddUserToRole("admin", "Administrator");
+    }
+
+    // To let users of this site log in using their accounts from other sites such as Microsoft, Facebook, Twitter,
+    // you must update this site. For more information visit http://go.microsoft.com/fwlink/?LinkID=226949
+
+    //OAuthWebSecurity.RegisterMicrosoftClient(
+    //    clientId: "",
+    //    clientSecret: "");
+
+    //OAuthWebSecurity.RegisterTwitterClient(
+    //    consumerKey: "",
+    //    consumerSecret: "");
+
+    //OAuthWebSecurity.RegisterFacebookClient(
+    //    appId: "",
+    //    appSecret: "");
+
+    //OAuthWebSecurity.RegisterGoogleClient();
+
+    WebMail.SmtpServer = "smtp.gmail.com";
+    WebMail.EnableSsl = true;
+    WebMail.UserName = "";
+    WebMail.Password = "";
+    WebMail.From = "";
+    WebMail.SmtpPort = 587;
+    
+
+    
+}

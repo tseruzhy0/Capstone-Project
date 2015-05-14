@@ -1,0 +1,111 @@
+﻿@section Scripts {
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+}
+
+@{
+    WebSecurity.RequireAuthenticatedUser();
+    
+    Layout = "~/_SiteLayout.cshtml";
+    Page.Title = "Group Signup";
+
+    
+    
+    var db = Database.Open("StarterSite");
+    
+    var email = "";
+    var groupListData = "";
+    var groupList = "";
+    var groupQueryString = "";
+    var selectedGroup = "";
+    var groupDisplayQueryString = "SELECT GroupTitle, StartDateTime, EndDateTime, GroupDescription, CurrentSize, Size, Days FROM Groups ORDER BY GroupTitle";
+    
+    groupQueryString = "SELECT GroupTitle,CurrentSize,Size FROM Groups ORDER BY GroupTitle";
+
+    
+
+    
+
+    Validation.RequireField("email", "You must enter in you email");
+    Validation.RequireField("groupList", "You must select a group to sign up for");
+
+    if (IsPost)
+    {
+        AntiForgery.Validate();
+        email = Request.Form["email"];
+        selectedGroup = Request["groupList"];
+        
+
+        if (Validation.IsValid())
+        {
+            
+            var limit = db.QuerySingle("SELECT Size FROM Groups");
+            var size = db.QuerySingle("SELECT CurrentSize FROM Groups WHERE GroupTitle = @0",selectedGroup);
+
+            var user = db.QuerySingle("SELECT GroupTitle,Email FROM GroupSignup WHERE LOWER(GroupTitle) = LOWER(@0) AND LOWER(Email) = LOWER(@1)", selectedGroup, WebSecurity.CurrentUserName);
+            if (user == null && size.CurrentSize<limit.Size) {
+                db.Execute("INSERT INTO GroupSignup (GroupTitle,Email) VALUES (@0, @1)", selectedGroup, WebSecurity.CurrentUserName);
+                db.Execute("UPDATE Groups  SET CurrentSize= @0 WHERE GroupTitle= @1",size.CurrentSize+1,selectedGroup);
+            } else {
+                ModelState.AddFormError("Group was already Added or Full");
+            }
+            
+        }
+    }
+    
+    
+}
+
+<div class="container">
+     <div class="page-header">
+          <h1>@Page.Title</h1>
+          <p>Sign up for a Camp or Group.</p>
+     </div>
+
+     <form method="post">
+          @AntiForgery.GetHtml()
+          @* If at least one validation error exists, notify the user *@
+          @Html.ValidationSummary("Please sign up for a Camp or Group", excludeFieldErrors: true, htmlAttributes: null)
+
+          <h3>Submission Form</h3>
+          <p>               
+               Select Group or Camp:
+               <select name="groupList" onselect="reselectState(this.value)">
+                    @foreach (var row in db.Query(groupQueryString))
+                    {
+                         <option selected="@(Request["groupList"]=="@row.GroupTitle")" value="@row.GroupTitle">@row.GroupTitle (@row.CurrentSize / @row.Size)</option>
+                    }
+               </select>
+               @Html.ValidationMessage("groupList")
+          </p>
+          <input type="hidden" id="email" name="email" value="@WebSecurity.CurrentUserName" @Validation.For("email") />
+
+          <button class="btn btn-default" type="submit">Register</button>
+     </form>
+
+     <table class="table">
+          <thead>
+               <tr>
+                    <th>Group</th>
+                    <th>Start, End Date</th>
+                    <th>Time</th>
+                    <th>Days of the Week</th>
+                    <th>Description</th>
+                    <th>Size</th>
+               </tr>
+          </thead>
+          <tbody>
+               @foreach (var row in db.Query(groupDisplayQueryString))
+               {
+                    <tr>
+                         <td>@row.GroupTitle</td>
+                         <td>@DateTime.Parse(row.StartDateTime.ToString()).ToString("dd/MM/yyyy") - @DateTime.Parse(row.EndDateTime.ToString()).ToString("dd/MM/yyyy")</td>
+                         <td>@DateTime.Parse(row.StartDateTime.ToString()).ToString("h:mm tt") - @DateTime.Parse(row.EndDateTime.ToString()).ToString("h:mm tt")</td>
+                         <td>@row.Days</td>
+                         <td>@row.GroupDescription</td>
+                         <td>@row.CurrentSize / @row.Size</td>
+                    </tr>
+               }
+          </tbody>
+     </table>
+</div>

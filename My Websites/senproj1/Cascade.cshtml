@@ -1,0 +1,8 @@
+﻿@{
+    Layout = null;
+    var groupId = UrlData[0].IsEmpty() ? "Select Group" : UrlData[0].ToString();  
+    var db = Database.Open("StarterSite");
+    var sql = "SELECT GroupTitle,Email FROM GroupSignup WHERE GroupTitle = @0 ORDER BY Email";
+    var users = db.Query(sql, groupId);
+    Json.Write(users, Response.Output);
+}
